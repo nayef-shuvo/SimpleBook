@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SimpleBook.Data;
 
@@ -10,9 +11,11 @@ using SimpleBook.Data;
 namespace SimpleBook.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231031155039_AddingBookCollection")]
+    partial class AddingBookCollection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "7.0.13");
@@ -24,6 +27,9 @@ namespace SimpleBook.Migrations
 
                     b.Property<string>("Author")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BookCollectionId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Edition")
@@ -43,7 +49,19 @@ namespace SimpleBook.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BookCollectionId");
+
                     b.ToTable("Books");
+                });
+
+            modelBuilder.Entity("SimpleBook.Entities.BookCollection", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BookCollections");
                 });
 
             modelBuilder.Entity("SimpleBook.Entities.User", b =>
@@ -85,6 +103,18 @@ namespace SimpleBook.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserRoles");
+                });
+
+            modelBuilder.Entity("SimpleBook.Entities.Book", b =>
+                {
+                    b.HasOne("SimpleBook.Entities.BookCollection", null)
+                        .WithMany("Books")
+                        .HasForeignKey("BookCollectionId");
+                });
+
+            modelBuilder.Entity("SimpleBook.Entities.BookCollection", b =>
+                {
+                    b.Navigation("Books");
                 });
 #pragma warning restore 612, 618
         }

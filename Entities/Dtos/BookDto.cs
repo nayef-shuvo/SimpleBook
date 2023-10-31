@@ -13,6 +13,9 @@ public class BookDto
     public string Title { get; set; }
 
     [Required]
+    public string Author { get; set; }
+
+    [Required]
     public int Edition { get; set; }
 
     [Required]

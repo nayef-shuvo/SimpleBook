@@ -45,6 +45,7 @@ public class BookController : ControllerBase
         {
             Isbn = book.Isbn,
             Title = book.Title,
+            Author = book.Author,
             Edition = book.Edition,
             Price = book.Price,
         };
@@ -65,8 +66,12 @@ public class BookController : ControllerBase
 
         if (book == null) return NotFound();
 
+        var isbnExist = await dbContext.Books.AnyAsync(b => b.Isbn == bookDto.Isbn);
+        if (isbnExist) return BadRequest("This isbn already exists.");
+
         book.Isbn = bookDto.Isbn;
         book.Title = bookDto.Title;
+        book.Author = bookDto.Author;
         book.Edition = bookDto.Edition;
         book.Price = bookDto.Price;
 

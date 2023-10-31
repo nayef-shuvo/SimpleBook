@@ -93,7 +93,16 @@ public class UsersController : ControllerBase
         string claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == claimedId);
         if (user == null) return BadRequest("User not found");
-        return Ok(user);
+
+        var profile = new {
+            Id = user.Id,
+            Username = user.Username,
+            FullName = user.FullName,
+            Email = user.Email,
+            DateRegistered = user.DateRegistered,
+        };
+
+        return Ok(profile);
     }
 
     [HttpGet]
@@ -133,6 +142,8 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "Admin, User")]
     public IActionResult Delete(string id)
     {
+        var claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        if (claimedId != id) return BadRequest("Access denied");
         var user = dbContext.Users.FirstOrDefault(x => x.Id == id);
         if (user == null) return BadRequest("User not found");
         dbContext.Users.Remove(user);

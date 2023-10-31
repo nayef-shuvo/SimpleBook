@@ -87,8 +87,42 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("profile")]
-    public async Task<IActionResult> UpdateProfile()
+    [Authorize(Roles = "Admin, User")]
+    public async Task<IActionResult> UpdateProfile(UpdateDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        Console.WriteLine(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        
+
+        string claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == claimedId);
+        if (user == null) return BadRequest("User not found");
+
+        // Check if username is unique
+        var isUsernameTaken = await dbContext.Users.AnyAsync(x => x.Username == request.Username && x.Id != claimedId);
+        if (isUsernameTaken) return BadRequest("This username is already used.");
+
+        // Check if email is unique
+        var isEmailTaken = await dbContext.Users.AnyAsync(x => x.Email == request.Email && x.Id != claimedId);
+        if (isEmailTaken) return BadRequest("This email is already used");
+
+        user.FullName = request.FullName;
+        user.Email = request.Email;
+        user.Username = request.Username;
+
+        await dbContext.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("id")]
+    public IActionResult Delete(string id)
+    {
+        var user = dbContext.Users.FirstOrDefault(x => x.Id == id);
+        if (user == null) return BadRequest("User not found");
+        dbContext.Users.Remove(user);
+        dbContext.SaveChanges();
         return Ok();
     }
 

@@ -60,7 +60,15 @@ public class UsersController : ControllerBase
         await dbContext.Users.AddAsync(newUser);
         await dbContext.SaveChangesAsync();
 
-        return Ok(newUser);
+        var response = new 
+        {
+            Id = newUser.Id,
+            Username = newUser.Username,
+            FullName = newUser.FullName,
+            Email = newUser.Email,
+            DateRegistered = newUser.DateRegistered,
+        };
+        return Ok(response);
     }
 
     [HttpPost]
@@ -84,7 +92,6 @@ public class UsersController : ControllerBase
         return Ok(new { Bearer = jwt });
     }
 
-    /// For testing purpose
     [HttpGet]
     [Route("profile")]
     [Authorize(Roles = "Admin, User")]
@@ -105,11 +112,14 @@ public class UsersController : ControllerBase
         return Ok(profile);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        return Ok(await dbContext.Users.ToListAsync());
-    }
+
+    /// For testing purpose
+
+    // [HttpGet]
+    // public async Task<IActionResult> GetAll()
+    // {
+    //     return Ok(await dbContext.Users.ToListAsync());
+    // }
 
     [HttpPut("profile")]
     [Authorize(Roles = "Admin, User")]

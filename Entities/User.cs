@@ -19,6 +19,7 @@ public class User
     public string FullName { get; set; }
     
     [EmailAddress]
+    [Required]
     public string Email { get; set; }
     
     public DateTime DateRegistered { get; private init; } = DateTime.Now;

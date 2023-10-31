@@ -80,7 +80,7 @@ public class BookController : ControllerBase
     }
 
     [HttpDelete("id")]
-    [Authorize(Roles = "Admin, User")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete([FromQuery] string id)
     {
         var book = await dbContext.Books.FirstOrDefaultAsync(x => x.Id == id);

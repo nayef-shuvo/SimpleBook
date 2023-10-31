@@ -27,33 +27,33 @@ public class UsersController : ControllerBase
     [HttpPost]
     [Route("register")]
     [AllowAnonymous]
-    public async Task<IActionResult> Register([FromBody] UserDto user)
+    public async Task<IActionResult> Register([FromBody] UserDto request)
     {
 
         /// Validation
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         /// Unique username check
-        var temp = await dbContext.Users.FirstOrDefaultAsync(x => x.Username == user.Username);
+        var temp = await dbContext.Users.FirstOrDefaultAsync(x => x.Username == request.Username);
         if (temp != null) return BadRequest("This username is already used.");
 
         /// Unique email check
-        temp = await dbContext.Users.FirstOrDefaultAsync(x => x.Email == user.Email);
+        temp = await dbContext.Users.FirstOrDefaultAsync(x => x.Email == request.Email);
         if (temp != null) return BadRequest("This email is already used");
 
         /// create new user
-        string passwordHash = GenerateHash(user.Password);
+        string passwordHash = GenerateHash(request.Password);
         var newUser = new User
         {
-            Username = user.Username,
-            Email = user.Email,
-            FullName = user.FullName,
+            Username = request.Username,
+            Email = request.Email,
+            FullName = request.FullName,
             Password = passwordHash,
         };
         var userRole = new UserRole
         {
             Id = newUser.Id,
-            Role = user.Username == "Admin" ? RoleType.Admin : RoleType.User,
+            Role = request.Username == "Admin" ? RoleType.Admin : RoleType.User,
         };
 
         await dbContext.UserRoles.AddAsync(userRole);
@@ -66,17 +66,17 @@ public class UsersController : ControllerBase
     [HttpPost]
     [Route("login")]
     [AllowAnonymous]
-    public async Task<IActionResult> Login([FromBody] LoginDto login)
+    public async Task<IActionResult> Login([FromBody] LoginDto request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Username == login.Username);
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Username == request.Username);
 
         /// User does not exist
         if (user == null) return BadRequest("Invalid username or password");
 
         /// Password verification
-        if (!Verify(login.Password, user.Password)) return BadRequest("Invalid username or password");
+        if (!Verify(request.Password, user.Password)) return BadRequest("Invalid username or password");
 
         /// Generate token
         var userRole = await dbContext.UserRoles.FirstOrDefaultAsync(x => x.Id == user.Id);
@@ -84,10 +84,20 @@ public class UsersController : ControllerBase
         return Ok(new { Bearer = jwt });
     }
 
+    /// For testing purpose
     [HttpGet]
     [Route("profile")]
-    // [Authorize(Roles = "admin, user")]
+    [Authorize(Roles = "Admin, User")]
     public async Task<IActionResult> GetProfile()
+    {
+        string claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == claimedId);
+        if (user == null) return BadRequest("User not found");
+        return Ok(user);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
     {
         return Ok(await dbContext.Users.ToListAsync());
     }
@@ -97,9 +107,6 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> UpdateProfile(UpdateDto request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        Console.WriteLine(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
 
         string claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == claimedId);
@@ -123,6 +130,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("id")]
+    [Authorize(Roles = "Admin, User")]
     public IActionResult Delete(string id)
     {
         var user = dbContext.Users.FirstOrDefault(x => x.Id == id);
@@ -130,6 +138,44 @@ public class UsersController : ControllerBase
         dbContext.Users.Remove(user);
         dbContext.SaveChanges();
         return Ok();
+    }
+
+    [HttpPost("change-password")]
+    [Authorize(Roles = "Admin, User")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        string claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == claimedId);
+        if (user == null) return BadRequest("User not found");
+
+        if (!Verify(request.OldPassword, user.Password)) return BadRequest("Invalid password");
+
+        if (request.OldPassword == request.NewPassword) return BadRequest("New password cannot be the same as old password");
+
+        user.Password = GenerateHash(request.NewPassword);
+        await dbContext.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Email == request.Email && x.Username == request.Username);
+        if (user == null) return BadRequest("User not found");
+
+        var newPassword = "12345678Aa!";
+        user.Password = GenerateHash(newPassword);
+        await dbContext.SaveChangesAsync();
+
+        var response = $"Your new password is {newPassword}. Please change it immediately after login.";
+
+        return Ok(response);
     }
 
     private string GenerateHash(string password)
@@ -147,8 +193,6 @@ public class UsersController : ControllerBase
         var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
         return computedHash.SequenceEqual(Convert.FromBase64String(hash));
     }
-
-
 
     private string GenerateToken(User user, RoleType role)
     {
@@ -174,6 +218,4 @@ public class UsersController : ControllerBase
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-
-
 }

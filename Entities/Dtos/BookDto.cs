@@ -1,12 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace SimpleBook.Entities;
+namespace SimpleBook.Entities.Dtos;
 
-public class Book
+public class BookDto
 {
-    [Key]
-    public string Id { get; private init; } = Guid.NewGuid().ToString();
-
     [Required]
     [StringLength(13, MinimumLength = 13)]
     [RegularExpression("^[0-9]*$", ErrorMessage = "ISBN must be all digits.")]
@@ -19,6 +16,5 @@ public class Book
     public int Edition { get; set; }
 
     [Required]
-    [Range(0, 100_000)]
     public decimal Price { get; set; }
 }

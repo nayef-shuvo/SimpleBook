@@ -5,7 +5,6 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.IdentityModel.Tokens;
 using SimpleBook.Data;
 using SimpleBook.Entities;
@@ -51,7 +50,13 @@ public class UsersController : ControllerBase
             FullName = user.FullName,
             Password = passwordHash,
         };
+        var userRole = new UserRole
+        {
+            Id = newUser.Id,
+            Role = user.Username == "Admin" ? RoleType.Admin : RoleType.User,
+        };
 
+        await dbContext.UserRoles.AddAsync(userRole);
         await dbContext.Users.AddAsync(newUser);
         await dbContext.SaveChangesAsync();
 
@@ -74,8 +79,9 @@ public class UsersController : ControllerBase
         if (!Verify(login.Password, user.Password)) return BadRequest("Invalid username or password");
 
         /// Generate token
-        var jwt = GenerateToken(user, UserType.User);
-        return Ok(new { token = jwt });
+        var userRole = await dbContext.UserRoles.FirstOrDefaultAsync(x => x.Id == user.Id);
+        var jwt = GenerateToken(user, userRole.Role);
+        return Ok(new { Bearer = jwt });
     }
 
     [HttpGet]
@@ -93,7 +99,7 @@ public class UsersController : ControllerBase
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         Console.WriteLine(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        
+
 
         string claimedId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == claimedId);
@@ -144,7 +150,7 @@ public class UsersController : ControllerBase
 
 
 
-    private string GenerateToken(User user, UserType userType)
+    private string GenerateToken(User user, RoleType role)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -155,7 +161,7 @@ public class UsersController : ControllerBase
             new(ClaimTypes.Name, user.Username),
             new(ClaimTypes.GivenName, user.FullName),
             new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, userType.ToString()),
+            new(ClaimTypes.Role, role.ToString()),
         };
 
         var token = new JwtSecurityToken(

@@ -11,9 +11,7 @@ public class User
     public string Username { get; set; }
     
 
-    /**
-    * Hash of Actual Password
-    */
+    /// Hash of Actual Password    
     [Required]
     public string Password { get; set; }
 
@@ -23,5 +21,5 @@ public class User
     [EmailAddress]
     public string Email { get; set; }
     
-    public DateTime DateRegistered { get; private set; } = DateTime.Now;
+    public DateTime DateRegistered { get; private init; } = DateTime.Now;
 }
